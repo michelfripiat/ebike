@@ -1,0 +1,28 @@
+https://sites.google.com/site/qeewiki/books/avr-guide/timers-on-the-atmega328
+
+
+
+
+
+
+
+
+HB!!!ON
+
+OCR1A=255; //HA OFF
+TCNT1=0;
+
+OCR1A=Inv_PWM_Motor; //HA ON
+TCNT1=0;
+
+OCR1B=255; //HB OFF
+TCNT1=0;
+
+OCR1B=Inv_PWM_Motor; //HB ON
+TCNT1=0;
+
+OCR2A=255; //HC OFF
+TCNT2=0;
+
+OCR2A=Inv_PWM_Motor; //HC ON
+TCNT2=0;
