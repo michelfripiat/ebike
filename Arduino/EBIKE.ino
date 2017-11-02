@@ -148,32 +148,32 @@ void Actuation(int Position) {
   if (Position == 4)
   {
    digitalWrite(LA, LOW); 
-   analogWrite(HB,Cmd_PWM_Motor);
+   digitalWrite(HB,HIGH);
   }
    if (Position == 5)
   {
    digitalWrite(LC, LOW);
-   analogWrite(HB,Cmd_PWM_Motor);
+   digitalWrite(HB,HIGH);
   }
    if (Position == 6)
   {
    digitalWrite(LC, LOW);
-   analogWrite(HA,Cmd_PWM_Motor);
+   digitalWrite(HA,HIGH);
   }
    if (Position == 1)
   {
    digitalWrite(LB, LOW);
-   analogWrite(HA,Cmd_PWM_Motor);
+   digitalWrite(HA,HIGH);
   }
    if (Position == 2)
   {
    digitalWrite(LB, LOW);
-   analogWrite(HC,Cmd_PWM_Motor);
+   digitalWrite(HC,HIGH);
   }
    if (Position == 3)
   {
    digitalWrite(LA, LOW);
-   analogWrite(HC,Cmd_PWM_Motor);
+   digitalWrite(HC,HIGH);
   }
   
 }
