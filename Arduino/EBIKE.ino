@@ -8,6 +8,8 @@
 */
 #include "TimerOne.h"
 
+int Message_Length=6; //length in bytes of the received messages
+
 int LED = 13;
 int Pin_Hall_A = 2;
 int Pin_Hall_B = 3;
@@ -18,7 +20,7 @@ int HB = 9;
 int HC = 10;
 int LA = 11;
 int LB = 12;
-int LC = 13;
+int LC = 7;
 
 int Time_Tic = 0;
 int Distance_Tic = 0;
@@ -46,6 +48,10 @@ int Battery_Voltage_Pin = A1;
 int PWM_Pin = 6;  
 
 int Motorization_Current_cmd = 0;
+int mode_cmd=1;
+int pwm_cmd=0;
+int action_cmd=0;
+
 int Position = 0; // Motor position state
 float Reg_Integrator=0;
 
@@ -70,7 +76,6 @@ void setup() {
 
 // the loop function runs over and over again forever
 void loop() {
-  digitalWrite(LED, LOW);    // turn the LED off by making the voltage LOW
   
   Raw_Distance=Distance_Tic;
   Distance_Tic=0;
@@ -97,12 +102,14 @@ void loop() {
   float Motorization_Current=float(analogRead(Motorization_Current_Pin))*0.7*5/1024;
   float Battery_Voltage=float(analogRead(Battery_Voltage_Pin))*10*5/1024;
 
-  int PWM_Motor = Control_Loop(Motorization_Current,Motorization_Current_cmd);
+  int PWM_Motor = Control_Loop(Motorization_Current);
   analogWrite(PWM_Pin,PWM_Motor);
 
   Communication(Distance,Speed,Acc,Battery_Voltage,Motorization_Current,PWM_Motor);
   
-  delay(50);                       // wait for a 50 milli-second
+  action_management();
+  
+  delay(20);                       // wait for a 50 milli-second
 }
 
 void Update_Switch() {
@@ -198,18 +205,28 @@ void  Open_All_Gates() {
   digitalWrite(LC, HIGH);
 }
 
-int Control_Loop(float Motorization_Current,int Motorization_Current_cmd) {
+int Control_Loop(float Motorization_Current) {
 
+int PWM_Motor=0;
+
+if (mode_cmd==1)
+{
+  PWM_Motor=pwm_cmd;
+}
+
+if (mode_cmd==2)
+{
 float Kp=10;
 float Ki=0;
 float tg = float(Motorization_Current_cmd)/100;
 Reg_Integrator=Reg_Integrator+Ki*(tg-Motorization_Current);
 float PWM_ = Kp*(tg-Motorization_Current)+127;
-int PWM_Motor = int(PWM_);
+PWM_Motor = int(PWM_);
 if (PWM_>255)
 {int PWM_Motor=255; }
 if (PWM_<0)
 {int PWM_Motor=0; }
+}
 
  
 return PWM_Motor;
@@ -217,11 +234,42 @@ return PWM_Motor;
 
 void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,float Motorization_Current, int PWM_Motor) {
 
- while (Serial.available() > 0) {
-
-   Motorization_Current_cmd = Serial.read();
+ while (Serial.available() > 4*Message_Length) {
+   
+   int trash=0;
+   for (int u1=0; u1 <Message_Length; u1++)
+   { trash = Serial.read(); }
+   
+   
 
  }
+ 
+ if (Serial.available() > 2*Message_Length)
+ {
+  int Message_Tempo_Buffer[6] = {0,0,0,0,0,0};
+  for (int i=0; i< Message_Length-1; i++)
+  {Message_Tempo_Buffer[i] = Serial.read();}
+  
+   for (int y = 0; y < Message_Length; y++)
+   {
+    Message_Tempo_Buffer[y+ Message_Length-1] = Serial.read();
+
+    if (Message_Tempo_Buffer[y] == 95 && Message_Tempo_Buffer[y + Message_Length - 1] == 222)
+    {
+                        
+     Analyse_Message(Message_Tempo_Buffer,y);
+                        
+     break;
+     }
+    }
+ 
+ }
+ 
+ 
+ 
+ //Motorization_Current_cmd = Serial.read();
+ 
+ 
 
 Serial.write(95);   //Startbyte '_'
 
@@ -265,9 +313,42 @@ Serial.write(temp[1]);
 Serial.write(temp[0]);
 
 Serial.write(Motorization_Current_cmd);
+Serial.write(mode_cmd);
    
 
 Serial.write(222);   //Stopbyte 
+
+
+}
+
+void Analyse_Message(int Message_Tempo_Buffer[],int y)
+{
+  mode_cmd=Message_Tempo_Buffer[y+1];
+  Motorization_Current_cmd=Message_Tempo_Buffer[y+2];
+  pwm_cmd=Message_Tempo_Buffer[y+3];
+  action_cmd=Message_Tempo_Buffer[y+4];
+
+}
+
+void action_management()
+{
+  if (action_cmd==147)
+  {
+    Distance=0;
+    action_cmd=0;
+  }
+  
+  if (action_cmd==12)
+  {
+    digitalWrite(LED, HIGH);
+    action_cmd=0;
+  }
+  
+  if (action_cmd==33)
+  {
+    digitalWrite(LED, LOW);
+    action_cmd=0;
+  }
 
 
 }
