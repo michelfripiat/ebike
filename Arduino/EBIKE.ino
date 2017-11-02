@@ -13,10 +13,10 @@ int Pin_Hall_A = 2;
 int Pin_Hall_B = 3;
 int Pin_Hall_C = 4;
 
-int HA = 9;
-int HB = 10;
-int HC = 11;
-int LA = 8;
+int HA = 8;
+int HB = 9;
+int HC = 10;
+int LA = 11;
 int LB = 12;
 int LC = 13;
 
@@ -41,12 +41,13 @@ float Distance_Per_Tic=0.033/4.236;  //  m/distance_Tic
 float Time_Per_Tic=0.000250;   //  second/time_Tic
 
 float Distance = 0;
-int Motorization_Current_Pin = A0;  // CHANGE HERE
-int Battery_Voltage_Pin = A1;  //CHANGE HERE
-//int PWM_Pin = 10;  // CHANGE HERE
+int Motorization_Current_Pin = A0;  
+int Battery_Voltage_Pin = A1; 
+int PWM_Pin = 6;  
 
-int Cmd_PWM_Motor = 15;
+int Motorization_Current_cmd = 0;
 int Position = 0; // Motor position state
+float Reg_Integrator=0;
 
 
 // the setup function runs once when you press reset or power the board
@@ -93,23 +94,21 @@ void loop() {
   float Speed = ( Raw_Speed6 + Raw_Speed7 +  Raw_Speed8 +  Raw_Speed9 +  Raw_Speed10)/(5);
   float Acc= ((Raw_Speed10 + Raw_Speed9 + Raw_Speed8 + Raw_Speed7 + Raw_Speed6 )/5 - (Raw_Speed5 + Raw_Speed4 + Raw_Speed3 + Raw_Speed2 + Raw_Speed1 )/5)/(5*Raw_Time);
 
-  float Motorization_Current=analogRead(Motorization_Current_Pin)*2.2;
-  float Battery_Voltage=analogRead(Battery_Voltage_Pin)*10;
+  float Motorization_Current=float(analogRead(Motorization_Current_Pin))*0.7*5/1024;
+  float Battery_Voltage=float(analogRead(Battery_Voltage_Pin))*10*5/1024;
 
-  //int PWM = Control_Loop();
-  //analogWrite(PWM_Pin,PWM);
+  int PWM_Motor = Control_Loop(Motorization_Current,Motorization_Current_cmd);
+  analogWrite(PWM_Pin,PWM_Motor);
 
-  Communication(Distance,Speed,Acc);
+  Communication(Distance,Speed,Acc,Battery_Voltage,Motorization_Current,PWM_Motor);
   
   delay(50);                       // wait for a 50 milli-second
 }
 
 void Update_Switch() {
-  
-  digitalWrite(LED, HIGH);   
+    
   Position = Position_State();
   Actuation(Position);
-  
 }
 
 int Position_State(){
@@ -199,22 +198,34 @@ void  Open_All_Gates() {
   digitalWrite(LC, HIGH);
 }
 
-int Control_Loop() {
+int Control_Loop(float Motorization_Current,int Motorization_Current_cmd) {
 
-return Cmd_PWM_Motor;
+float Kp=10;
+float Ki=0;
+float tg = float(Motorization_Current_cmd)/100;
+Reg_Integrator=Reg_Integrator+Ki*(tg-Motorization_Current);
+float PWM_ = Kp*(tg-Motorization_Current)+127;
+int PWM_Motor = int(PWM_);
+if (PWM_>255)
+{int PWM_Motor=255; }
+if (PWM_<0)
+{int PWM_Motor=0; }
+
+ 
+return PWM_Motor;
 }
 
-void Communication(float Distance,float Speed,float Acc) {
+void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,float Motorization_Current, int PWM_Motor) {
 
  while (Serial.available() > 0) {
 
-   Cmd_PWM_Motor = Serial.read();
+   Motorization_Current_cmd = Serial.read();
 
  }
 
 Serial.write(95);   //Startbyte '_'
 
-Serial.write(Cmd_PWM_Motor);
+Serial.write(PWM_Motor);
 Serial.write(Position);
 
 long Distance_L = long(Distance*1000);
@@ -237,7 +248,23 @@ memcpy(temp, (unsigned char*) (&Acc_L), 4);
 Serial.write(temp[3]);
 Serial.write(temp[2]);
 Serial.write(temp[1]);
-Serial.write(temp[0]);   
+Serial.write(temp[0]); 
+
+long Battery_Voltage_L = long(Battery_Voltage*1000);
+memcpy(temp, (unsigned char*) (&Battery_Voltage_L), 4);
+Serial.write(temp[3]);
+Serial.write(temp[2]);
+Serial.write(temp[1]);
+Serial.write(temp[0]); 
+
+long Motorization_Current_L = long(Motorization_Current*1000);
+memcpy(temp, (unsigned char*) (&Motorization_Current_L), 4);
+Serial.write(temp[3]);
+Serial.write(temp[2]);
+Serial.write(temp[1]);
+Serial.write(temp[0]);
+
+Serial.write(Motorization_Current_cmd);
    
 
 Serial.write(222);   //Stopbyte 
