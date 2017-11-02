@@ -15,15 +15,15 @@ int Pin_Hall_A = 2;
 int Pin_Hall_B = 3;
 int Pin_Hall_C = 4;
 
-int HA = 8;
-int HB = 9;
-int HC = 10;
-int LA = 11;
-int LB = 12;
+int HA = 9;
+int HB = 10;
+int HC = 11;
+int LA = 8;
+int LB = 11;
 int LC = 7;
 
-int Time_Tic = 0;
-int Distance_Tic = 0;
+long Time_Tic = 0;
+long Distance_Tic = 0;
 int Last_Hall_A = 0;
 
 float Raw_Distance = 0;
@@ -40,20 +40,23 @@ float Raw_Speed9 = 0;
 float Raw_Speed10 = 0;
 
 float Distance_Per_Tic=0.033/4.236;  //  m/distance_Tic
-float Time_Per_Tic=0.000250;   //  second/time_Tic
+float Time_Per_Tic=0.000128;   //  second/time_Tic
 
 float Distance = 0;
 int Motorization_Current_Pin = A0;  
 int Battery_Voltage_Pin = A1; 
-int PWM_Pin = 6;  
 
 int Motorization_Current_cmd = 0;
 int mode_cmd=1;
 int pwm_cmd=0;
 int action_cmd=0;
+int PWM_Motor;
+int Inv_PWM_Motor;
 
 int Position = 0; // Motor position state
+int Last_Position;
 float Reg_Integrator=0;
+long delay_1=0;
 
 
 // the setup function runs once when you press reset or power the board
@@ -68,10 +71,32 @@ void setup() {
   pinMode(LC, OUTPUT);
   Open_All_Gates();
   
-  Timer1.initialize(250); 
-  Timer1.attachInterrupt(Update_Switch);
+  //Timer1.initialize(250); 
+  //Timer1.attachInterrupt(Update_Switch);
+  
+  TCCR0A = 0;     //setting timer0 for interrupts every 128us to update switch of MOSFET
+  TIMSK0 = 2;
+  OCR0A = 255;
+  TCCR0B = 2;  
+  
+  TCCR1A = 241;   //setting timer1 for pwm's
+  OCR1A = 255;
+  OCR1B = 255;
+  TCCR1B = 9;
+  
+  TCCR2A = 243;   //setting timer2 for pwm
+  OCR2A = 255;
+  TCCR2B = 9;
+  
+  
+  sei();                                                 
 
   Serial.begin(115200);
+}
+
+ISR(TIMER0_COMPA_vect)
+{
+  Update_Switch();
 }
 
 // the loop function runs over and over again forever
@@ -102,20 +127,29 @@ void loop() {
   float Motorization_Current=float(analogRead(Motorization_Current_Pin))*0.7*5/1024;
   float Battery_Voltage=float(analogRead(Battery_Voltage_Pin))*10*5/1024;
 
-  int PWM_Motor = Control_Loop(Motorization_Current);
-  analogWrite(PWM_Pin,PWM_Motor);
-
-  Communication(Distance,Speed,Acc,Battery_Voltage,Motorization_Current,PWM_Motor);
+  Control_Loop(Motorization_Current); //generate PWM_Motor 
+  Inv_PWM_Motor=255-PWM_Motor;
+  Actuation();
+  
+  Communication(Distance,Speed,Acc,Battery_Voltage,Motorization_Current);
   
   action_management();
   
-  delay(20);                       // wait for a 50 milli-second
+  while (delay_1<390)               // wait for a 50 milli-second
+  {digitalWrite(5,LOW);}
+  
+  delay_1=0;
+  //delay(50);                      
 }
 
 void Update_Switch() {
-    
+  
+  delay_1=delay_1+1;
+  
   Position = Position_State();
-  Actuation(Position);
+  if (Position!=Last_Position)
+  {Actuation();}
+  Last_Position=Position;
 }
 
 int Position_State(){
@@ -148,45 +182,77 @@ int Position_State(){
   
 }
 
-void Actuation(int Position) {
+void Actuation() {
 
   //Open_All_Gates();
 
   if (Position == 4)
   {
-   digitalWrite(HA,LOW);  //safety
-   digitalWrite(LA,LOW);
-   digitalWrite(LC,HIGH); 
+   if (Last_Position != 5)
+   {Open_All_Gates();
+    OCR1B=Inv_PWM_Motor; //HB ON
+    TCNT1=0;
+   }
+   digitalWrite(LA,LOW);  //LA ON
+   digitalWrite(LC,HIGH); //LC OFF
   }
-   if (Position == 5)
+  if (Position == 5)
   {
-   digitalWrite(LB,HIGH);  //safety
-   digitalWrite(HB,HIGH);
-   digitalWrite(HA,LOW);
+   if (Last_Position != 6)
+   {Open_All_Gates();
+    digitalWrite(LC,LOW);  //LC ON
+   }
+   
+   OCR1B=Inv_PWM_Motor;  //HB ON
+   TCNT1=0;
+   OCR1A=255;  //HA OFF
+   TCNT1=0;
   }
-   if (Position == 6)
+  if (Position == 6)
   {
-   digitalWrite(HC,LOW);  //safety
-   digitalWrite(LC,LOW);
-   digitalWrite(LB,HIGH);
+   if (Last_Position != 1)
+   {Open_All_Gates();
+    OCR1A=Inv_PWM_Motor; //HA ON
+    TCNT1=0;
+   }
+   
+   digitalWrite(LC,LOW);  //LC ON
+   digitalWrite(LB,HIGH); // LB OFF
   }
-   if (Position == 1)
+  if (Position == 1)
   {
-   digitalWrite(LA,HIGH);  //safety
-   digitalWrite(HA,HIGH);
-   digitalWrite(HC,LOW);
+   if (Last_Position != 2)
+   {Open_All_Gates();
+    digitalWrite(LB,LOW);  //LB ON
+   }
+   
+    OCR1A=Inv_PWM_Motor; //HA ON
+    TCNT1=0; 
+    OCR2A=255; //HC OFF
+    TCNT2=0;
   }
-   if (Position == 2)
+  if (Position == 2)
   {
-   digitalWrite(HB,LOW);  //safety
-   digitalWrite(LB,LOW);
-   digitalWrite(LA,HIGH);
+   if (Last_Position != 3)
+   {Open_All_Gates();
+    OCR2A=Inv_PWM_Motor; //HC ON
+    TCNT2=0;
+   }
+   
+   digitalWrite(LB,LOW); // LB ON
+   digitalWrite(LA,HIGH);// LA OFF
   }
-   if (Position == 3)
+  if (Position == 3)
   {
-   digitalWrite(LC,HIGH);  //safety
-   digitalWrite(HC,HIGH);
-   digitalWrite(HB,LOW);
+   if (Last_Position != 4)
+   {Open_All_Gates();
+    digitalWrite(LA,LOW);// LA ON
+   }
+   
+   OCR2A=Inv_PWM_Motor; //HC ON
+   TCNT2=0;
+   OCR1B=255; //HB OFF
+   TCNT1=0;
   }
   
    if (Position == 0)
@@ -197,17 +263,17 @@ void Actuation(int Position) {
 }
 
 void  Open_All_Gates() {
-  digitalWrite(HA, LOW);
-  digitalWrite(HB, LOW);
-  digitalWrite(HC, LOW);
-  digitalWrite(LA, HIGH);
-  digitalWrite(LB, HIGH);
-  digitalWrite(LC, HIGH);
+  OCR1A=255; //HA OFF
+  OCR1B=255; //HB OFF
+  TCNT1=0;
+  OCR2A=255; //HC OFF
+  TCNT2=0;
+  digitalWrite(LA, HIGH); //LA OFF
+  digitalWrite(LB, HIGH); //LB OFF
+  digitalWrite(LC, HIGH); //LC OFF
 }
 
-int Control_Loop(float Motorization_Current) {
-
-int PWM_Motor=0;
+void Control_Loop(float Motorization_Current) {
 
 if (mode_cmd==1)
 {
@@ -223,16 +289,13 @@ Reg_Integrator=Reg_Integrator+Ki*(tg-Motorization_Current);
 float PWM_ = Kp*(tg-Motorization_Current)+127;
 PWM_Motor = int(PWM_);
 if (PWM_>255)
-{int PWM_Motor=255; }
+{PWM_Motor=255; }
 if (PWM_<0)
-{int PWM_Motor=0; }
+{PWM_Motor=0; }
+}
 }
 
- 
-return PWM_Motor;
-}
-
-void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,float Motorization_Current, int PWM_Motor) {
+void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,float Motorization_Current) {
 
  while (Serial.available() > 4*Message_Length) {
    

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
 
 namespace Ebike1
 {
@@ -22,19 +23,30 @@ namespace Ebike1
         int action_cmd = 0; //no action
 
         double Wheel_Radius = 0.3; //[m]
+        double Timestamp = 0;
+        int pwm_back = 0;
+        string mode_back = "";
         double position = 0;
         double speed = 0;
         double acc = 0;
         double voltage = 0;
         double current = 0;
+        double Power = 0;
+        string Torque_txt = "";
+        bool Data_Received = false;
 
-        double speed_tg = 0;
-
+        int Logger_tic=0;
+        int Logger_Sampling=1;
+        StreamWriter File = new StreamWriter("DATA_LOG.csv");
+        
+        
         public Form1()
         {
             InitializeComponent();
+            File.Write("TimeStamp[ms];Data Received;Mode;PWM[%];Position[m];Speed[m/s];Acceleration[m/s2];Voltage[V];Current[A];Power[W];Torque[nm] \r\n");
             radioButton1.Checked = true;
             timer1.Start();
+
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -68,6 +80,24 @@ namespace Ebike1
                 Com_write();
                 
 
+                Timestamp = Timestamp + timer1.Interval;
+
+                if (checkBox1.Checked == true) // logger enabled
+                {
+                    if (Logger_tic >= Logger_Sampling)
+                    {
+
+                        File.Write(Timestamp.ToString() + ";" + Data_Received.ToString() + ";" + mode_back.ToString() + ";" + pwm_back.ToString() + ";" + position.ToString() + ";" + speed.ToString() + ";" + acc.ToString() + ";" + voltage.ToString() + ";" + current.ToString() + ";" + Power.ToString() + ";" + Torque_txt + "\r\n");
+                        Logger_tic = 0;
+
+                    }
+
+
+                }
+
+                Logger_tic++;
+
+
             }
         }
 
@@ -99,7 +129,7 @@ namespace Ebike1
         }
         private void Com_read()
         {
-
+            Data_Received = false;
             label2.Text = "status :";
             
             // MessageBox.Show(serialPort1.BytesToRead.ToString());
@@ -128,6 +158,7 @@ namespace Ebike1
                     if (Message_Tempo_Buffer[y] == 95 && Message_Tempo_Buffer[y + Message_Frame - 1] == 222)
                     {
                         label2.Text = "status : OK";
+                        Data_Received = true;
                         Analyse_Message(Message_Tempo_Buffer,y);
                         //richTextBox1.Text =y.ToString() +" "+ Message_Tempo_Buffer[y].ToString() + " ; " + Message_Tempo_Buffer[y+1].ToString() + " ; " + Message_Tempo_Buffer[y+15].ToString();
                         break;
@@ -143,8 +174,10 @@ namespace Ebike1
 
         private void Analyse_Message(int[] buffer, int y)
         {
-            
-            label3.Text = "PWM : " + Convert.ToString(Convert.ToInt16(Convert.ToDouble(buffer[y+1])/255*100))+" %";
+
+            pwm_back = (Convert.ToInt16(Convert.ToDouble(buffer[y + 1]) / 255 * 100));
+            label3.Text = "PWM : " + Convert.ToString(pwm_back)+" %";
+
             label4.Text = "Position : " + buffer[y+2].ToString();
 
             byte[] B = new byte[4] { Convert.ToByte(buffer[y+6]), Convert.ToByte(buffer[y + 5]), Convert.ToByte(buffer[y + 4]), Convert.ToByte(buffer[y + 3]) };
@@ -159,8 +192,8 @@ namespace Ebike1
 
             if (speed>=0 && speed <= 16)
             { progressBar1.Value = Convert.ToInt16(Math.Round(speed * 3.6)); }
-            else
-            { MessageBox.Show(buffer[y].ToString()+","+ buffer[y+7].ToString() + "," + buffer[y+25].ToString()); }
+            //else
+            //{ MessageBox.Show(buffer[y].ToString()+","+ buffer[y+7].ToString() + "," + buffer[y+25].ToString()); }
             label20.Text = Math.Round(speed * 3.6, 2).ToString() + " km/h";
 
 
@@ -182,17 +215,23 @@ namespace Ebike1
             label14.Text = "Current_cmd : " + (Convert.ToDouble(buffer[y + 23])/100).ToString()+ " A";
             
             if (buffer[y + 24]==1)
-            { label9.Text = "Mode : PWM direct control"; }
+            { label9.Text = "Mode : PWM direct control"; mode_back = "PWM direct control"; }
             if (buffer[y + 24] == 2)
-            { label9.Text = "Mode : Current control"; }
+            { label9.Text = "Mode : Current control"; mode_back = "Current control"; }
 
-            label12.Text = "Power : " + Math.Round((current*voltage),3).ToString()+" W";
+            Power = Math.Round((current * voltage), 3);
+            label12.Text = "Power : " + Power.ToString()+" W";
             if (speed > 0.1)
-            { label13.Text = "Torque : " + Math.Round((current * voltage / speed)*Wheel_Radius,3).ToString() + " Nm"; }
-            else
-            { label13.Text = "Torque : --- Nm"; }
+            {
+                Torque_txt = Math.Round((current * voltage / speed) * Wheel_Radius, 3).ToString();
+            }
 
-            
+            else
+            {   Torque_txt= "---";
+                
+            }
+
+            label13.Text = "Torque : " + Torque_txt + " Nm";
 
 
 
@@ -240,6 +279,36 @@ namespace Ebike1
         private void button5_Click(object sender, EventArgs e)
         {
             action_cmd = 33; //LED OFF
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBox1.Checked == true)
+            {
+                textBox1.Enabled = false;
+                Logger_Sampling = Convert.ToInt16(textBox1.Text);
+                Logger_tic = 0;
+                button6.Enabled = false;
+
+
+            }
+
+            else
+            {
+                textBox1.Enabled = true;
+                button6.Enabled = true;
+
+
+            }
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            File.Close();
+            textBox1.Enabled = false;
+            checkBox1.Enabled = false;
+            checkBox1.Checked = false;
+            button6.Enabled = false;
         }
     }
 }
