@@ -52,3 +52,13 @@ C:\Users\Chloé\Documents\DAVID\BIKE\Code\EBIKE1.7\Ebike3\Ebike1\obj\Debug\Ebike
 C:\Users\Chloé\Documents\DAVID\BIKE\Code\EBIKE1.7\Ebike3\Ebike1\obj\Debug\Ebike1.csproj.GenerateResource.Cache
 C:\Users\Chloé\Documents\DAVID\BIKE\Code\EBIKE1.7\Ebike3\Ebike1\obj\Debug\Ebike1.exe
 C:\Users\Chloé\Documents\DAVID\BIKE\Code\EBIKE1.7\Ebike3\Ebike1\obj\Debug\Ebike1.pdb
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.exe
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.pdb
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\bin\Debug\Ebike1.exe.config
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\bin\Debug\Ebike1.exe
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\bin\Debug\Ebike1.pdb
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.csprojResolveAssemblyReference.cache
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.Form1.resources
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.Properties.Resources.resources
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.csproj.GenerateResource.Cache
+C:\Users\MFR\Google Drive\Projet vélo\Arduino\Code (1)\EBIKE1.8\Computer-code\Ebike1\obj\Debug\Ebike1.csproj.CoreCompileInputs.cache

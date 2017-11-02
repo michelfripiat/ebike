@@ -312,7 +312,7 @@ if (PWM_<0)
 
 if (mode_cmd==3)
 {
-  PWM_Motor= int(PWM_From_BT*2.55);
+  PWM_Motor= PWM_From_BT;
 }
 }
 
@@ -349,20 +349,7 @@ void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,fl
 
  while (bluetooth.available()) // Read while data in BT buffer
   {
-    int BT_cmd = bluetooth.read();
-    char dataFromBt = (char)BT_cmd;
-
-    if (dataFromBt == 'u') {
-      PWM_From_BT=100; }
-
-    if (dataFromBt == 'd') {
-      PWM_From_BT=0; }
-      
-    if (dataFromBt == '1' && PWM_From_BT<100) {
-      PWM_From_BT=PWM_From_BT+10;
-      }
-    if (dataFromBt == '0' && PWM_From_BT>0) {
-      PWM_From_BT=PWM_From_BT-10;}
+    PWM_From_BT = bluetooth.read();
   }
  
  //Motorization_Current_cmd = Serial.read();

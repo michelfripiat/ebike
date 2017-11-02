@@ -1,0 +1,16 @@
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\bin\Debug\App1.dll
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\bin\Debug\App1.pdb
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\bin\Debug\App1.App1.apk
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\bin\Debug\App1.App1-Signed.apk
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\App1.dll
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\App1.pdb
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\android\bin\App1.App1.apk
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\res\layout\main.xml
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\res\values\strings.xml
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\res\drawable\icon.png
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\R.cs.flag
+c:\users\chloé\documents\visual studio 2017\Projects\App1\App1\obj\Debug\uploadflags.txt
+C:\Users\Chloé\Documents\Visual Studio 2017\Projects\App1\App1\obj\Debug\App1.csprojResolveAssemblyReference.cache
+C:\Users\Chloé\Documents\Visual Studio 2017\Projects\App1\App1\obj\Debug\res\drawable\bike.ico
+C:\Users\Chloé\Documents\Visual Studio 2017\Projects\App1\App1\bin\Debug\App1.dll.mdb
+C:\Users\Chloé\Documents\Visual Studio 2017\Projects\App1\App1\obj\Debug\android\assets\App1.dll.mdb
