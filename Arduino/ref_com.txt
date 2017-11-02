@@ -1,0 +1,602 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO.Ports;
+
+namespace train_control
+{
+    public partial class Form1 : Form
+    {
+
+        double data_flow = 0;
+
+        double Acc = 0, Speed = 0, Pos = 0;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+
+
+            serialPort1.PortName = "COM9";
+            serialPort1.BaudRate = 9600;
+            serialPort1.Open();
+            
+            richTextBox1.Text = "CONNECTED";
+            timer1.Start();
+            timer2.Start();
+
+
+
+
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+           
+
+        }
+
+        private void writing_process()
+        {
+            int acc_value = trackBar1.Value + 60;
+            serialPort1.Write("a");
+            char val = (char)acc_value;
+            serialPort1.Write(val.ToString());
+            
+        }
+
+        private void reading_process()
+        {
+            int data_length = serialPort1.BytesToRead;
+            richTextBox1.Text = "";
+
+            int[] startbyte = new int[3];
+            for (int i1=0; i1<2; i1++)
+                {
+                    startbyte[i1] = 0;
+                }
+
+            while (data_length > 5)
+            {
+                startbyte[2] = serialPort1.ReadByte(); data_flow = data_flow + 1;
+                richTextBox1.Text = richTextBox1.Text+startbyte[2].ToString();
+
+                if (startbyte[0]==97 && startbyte[1]==98 && startbyte[2]==99)
+                {
+                    
+                    bool data_consistency = false;
+                    int message_ID= serialPort1.ReadByte();
+                    int packet_length= serialPort1.ReadByte();
+                    int[] packet = new int[packet_length];
+
+                    packet[0] = 97;
+                    packet[1] = 98;
+                    packet[2] = 99;
+                    packet[3] = message_ID;
+                    packet[4] = packet_length;
+
+                    for (int i2=5;i2<packet_length; i2++)
+                     { packet[i2]= serialPort1.ReadByte(); }
+
+                    if ( packet[packet_length-1]==122 && packet[packet_length - 2]==121 && packet[packet_length - 3]==120)
+                      { data_consistency = true; execute_message(packet); richTextBox1.Text = "SYNCHRONISATION OK"; data_flow = data_flow + packet_length - 3; }
+
+
+                }
+
+
+                startbyte[0] = startbyte[1];
+                startbyte[1] = startbyte[2];
+                data_length = serialPort1.BytesToRead;
+
+            }
+
+ 
+        }
+
+        private void execute_message(int[] packet)
+        {
+            if (packet[3]==1)  // message ID = 1
+            {
+
+                Acc = convertion_2(packet[5], packet[6]);
+                label1.Text = "Accélération [m/s²] = "+Acc.ToString();
+
+                Speed = convertion_2(packet[7], packet[8]);
+                label2.Text = "Vitesse [km/h] = " + (Speed*3.6).ToString();
+
+                Pos = convertion_4(packet[9], packet[10], packet[11], packet[12]);
+                label3.Text = "Position [m] = " + (Pos).ToString();
+
+            }
+
+
+        }
+
+        private double convertion_2(int b1,int b2)
+        {
+            
+            int total = b1 + (b2 << 8);
+            short tot = (short)total;
+            double out1= Convert.ToDouble(tot)/100;
+            return out1;
+
+        }
+
+        private double convertion_4(int b1, int b2, int b3, int b4)
+        {
+
+            int total = b1 + (b2 << 8) +(b3 << 16)+ (b4<<24);
+            double out1 = Convert.ToDouble(total) / 100;
+            return out1;
+
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+
+            reading_process();
+
+            writing_process();
+
+            automation_process();
+
+        }
+
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            label4.Text = "data flow [Ko/s] : " + (data_flow / timer2.Interval).ToString();
+            data_flow = 0;
+        }
+
+        private void automation_process()
+        {
+
+            if(checkBox1.Checked)
+            {
+                double pos_target = Convert.ToDouble(textBox1.Text);
+                double speed = Speed;
+                double position = Pos;
+
+                trackBar1.Enabled = false;
+
+                double acc_target = (pos_target - position) * 0.03 - speed * 0.6;
+
+                if(acc_target>1.2) { acc_target = 1.2; }
+                if (acc_target < -1.2) { acc_target = -1.2; }
+
+
+                int track_parameter = Convert.ToInt16( Math.Round(acc_target * 50));
+
+                trackBar1.Value = track_parameter;
+
+
+
+
+            }
+            else { trackBar1.Enabled = true; }
+
+
+
+
+        }
+    }
+}
+
+
+----------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+label2.Text = "status :";
+           // MessageBox.Show(serialPort1.BytesToRead.ToString());
+            int BytesToRead = serialPort1.BytesToRead;
+            while (BytesToRead >= 1)
+
+            {
+
+                Message_Tempo_Buffer[Message_Tempo_Buffer_size] = serialPort1.ReadByte();
+                BytesToRead--;
+                Message_Tempo_Buffer_size++;
+
+            }
+            MessageBox.Show("ok");
+
+            for (int i=0; i< Message_Tempo_Buffer_size; i++)
+            {
+
+                if (Message_Tempo_Buffer[i] == 95 && Message_Tempo_Buffer[i + Message_Frame - 1] == 222) //startbyte and Stopbyte
+                {
+
+                    label2.Text = "status : data package correctly received";
+                    
+                    for (int y=0; y< Message_Frame; y++)
+                    {
+
+                        Core_Data_buffer[y] = Message_Tempo_Buffer[i + y];
+                        richTextBox1.Text = richTextBox1.Text + Core_Data_buffer[y].ToString() + " ; ";
+
+                    }
+
+                    
+                    Message_Tempo_Buffer_size = Message_Tempo_Buffer_size - (i + Message_Frame - 1);
+
+                    for (int y = 0; y < Message_Tempo_Buffer_size; y++)
+                    {
+
+                        Message_Tempo_Buffer[y] = Message_Tempo_Buffer[i + Message_Frame - 1];
+
+                    }
+
+                    i = 0;
+
+                }
+
+
+
+            }
+
+        }
+    }
+}
+
+-------------------------------------------------------------------------------------------------
+
+
+
+private void Com_read()
+        {
+
+            label2.Text = "status :";
+            
+            // MessageBox.Show(serialPort1.BytesToRead.ToString());
+            int BytesToRead = serialPort1.BytesToRead;
+
+            int trash = 0;
+            if (BytesToRead > 3*Message_Frame)
+            {
+                for (int u1=0; u1 < BytesToRead - Message_Frame-1; u1++)
+                { trash = serialPort1.ReadByte(); }
+            }
+            BytesToRead = serialPort1.BytesToRead;
+
+
+            if (BytesToRead>=Message_Frame)
+            {
+                for (int i=0; i<BytesToRead; i++)
+                {
+                    Message_Tempo_Buffer[i] = serialPort1.ReadByte();
+                }
+
+                int y = 0;
+                if (Message_Tempo_Buffer[y] == 95 && Message_Tempo_Buffer[y + Message_Frame - 1] == 222)
+                {
+                    label2.Text = "status : OKK";
+                    richTextBox1.Text =y.ToString() +" "+ Message_Tempo_Buffer[y].ToString() + " ; " + Message_Tempo_Buffer[y+1].ToString() + " ; " + Message_Tempo_Buffer[y+15].ToString();
+
+                }
+                // else
+                //{ //label2.Text = "status : NNN"; }
+               
+            }
+           
+            //label2.Text = "status : OK" + " " + BytesToRead.ToString();
+            
+
+        }
+    }
+}
+
+
+
+
+------------------------------------------------------------------------------------------------------
+
+
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Ebike1
+{
+    public partial class Form1 : Form
+    {
+        int Message_Frame = 16;  //number of bytes in a message
+        int[] Message_Tempo_Buffer = new int[100];
+        int Message_Tempo_Buffer_size = 0;
+        int[] Core_Data_buffer = new int[16];
+
+        public Form1()
+        {
+            InitializeComponent();
+            timer1.Start();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            serialPort1.PortName = "COM16";
+            serialPort1.BaudRate = 115200;
+            serialPort1.Open();
+            label1.Text = "State : Connected";
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+
+            serialPort1.Close();
+            label1.Text = "State : Disconnected";
+
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            if (label1.Text == "State : Connected")
+            {
+
+                Com_read();
+                Com_write();
+
+
+            }
+        }
+
+        private void Com_write()
+        {
+            char pwm_cmd = (char)13;
+            serialPort1.Write(pwm_cmd.ToString());
+
+        }
+        private void Com_read()
+        {
+
+            label2.Text = "status :";
+            
+            // MessageBox.Show(serialPort1.BytesToRead.ToString());
+            int BytesToRead = serialPort1.BytesToRead;
+
+            int trash = 0;
+            if (BytesToRead > 4*Message_Frame)
+            {
+                for (int u1=0; u1 < BytesToRead - 2*Message_Frame; u1++)
+                { trash = serialPort1.ReadByte(); }
+            }
+            BytesToRead = serialPort1.BytesToRead;
+
+
+            if (BytesToRead>=2*Message_Frame)
+            {
+                for (int i=0; i< Message_Frame-1; i++)
+                {
+                    Message_Tempo_Buffer[i] = serialPort1.ReadByte();
+                }
+
+                for (int y = 0; y < Message_Frame; y++)
+                {
+                    Message_Tempo_Buffer[y+ Message_Frame-1] = serialPort1.ReadByte();
+
+                    if (Message_Tempo_Buffer[y] == 95 && Message_Tempo_Buffer[y + Message_Frame - 1] == 222)
+                    {
+                        label2.Text = "status : OK";
+                        Analyse_Message(Message_Tempo_Buffer,y);
+                        //richTextBox1.Text =y.ToString() +" "+ Message_Tempo_Buffer[y].ToString() + " ; " + Message_Tempo_Buffer[y+1].ToString() + " ; " + Message_Tempo_Buffer[y+15].ToString();
+                        break;
+                    }
+                }
+                
+            }
+            else
+            { label2.Text = "status : ERROR"; }
+           
+            //label2.Text = "status : OK" + " " + BytesToRead.ToString();
+            
+
+        }
+
+        private void Analyse_Message(int[] buffer, int y)
+        {
+            
+            label3.Text = "PWM : " + Convert.ToString(Convert.ToInt16(Convert.ToDouble(buffer[y+1])/255*100))+" %";
+            label4.Text = "Position : " + buffer[y+2].ToString();
+
+
+
+
+
+
+
+
+
+
+
+        }
+    }
+}
+
+
+
+-----------------------------------------------------------------------------------------------------
+
+
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Ebike1
+{
+    public partial class Form1 : Form
+    {
+        int Message_Frame = 16;  //number of bytes in a message
+        int[] Message_Tempo_Buffer = new int[100];
+        int Message_Tempo_Buffer_size = 0;
+        int[] Core_Data_buffer = new int[16];
+        char Pwm_Cmd;
+
+        public Form1()
+        {
+            InitializeComponent();
+            timer1.Start();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            serialPort1.PortName = "COM16";
+            serialPort1.BaudRate = 115200;
+            serialPort1.Open();
+            label1.Text = "State : Connected";
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+
+            serialPort1.Close();
+            label1.Text = "State : Disconnected";
+
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            if (label1.Text == "State : Connected")
+            {
+
+                Com_read();
+                Control_Action();
+                Com_write();
+                
+
+            }
+        }
+
+        private void Control_Action()
+        {
+            int T = trackBar1.Value;
+            double pwm = Convert.ToDouble(T) * 2.55;
+            label8.Text = "pwm_cmd : " + T.ToString();
+            Pwm_Cmd = Convert.ToChar(Convert.ToInt16(pwm));
+
+
+        }
+
+        private void Com_write()
+        {
+            //Pwm_Cmd = (char)13;
+            serialPort1.Write(Pwm_Cmd.ToString());
+
+        }
+        private void Com_read()
+        {
+
+            label2.Text = "status :";
+            
+            // MessageBox.Show(serialPort1.BytesToRead.ToString());
+            int BytesToRead = serialPort1.BytesToRead;
+
+            int trash = 0;
+            if (BytesToRead > 4*Message_Frame)
+            {
+                for (int u1=0; u1 < BytesToRead - 2*Message_Frame; u1++)
+                { trash = serialPort1.ReadByte(); }
+            }
+            BytesToRead = serialPort1.BytesToRead;
+
+
+            if (BytesToRead>=2*Message_Frame)
+            {
+                for (int i=0; i< Message_Frame-1; i++)
+                {
+                    Message_Tempo_Buffer[i] = serialPort1.ReadByte();
+                }
+
+                for (int y = 0; y < Message_Frame; y++)
+                {
+                    Message_Tempo_Buffer[y+ Message_Frame-1] = serialPort1.ReadByte();
+
+                    if (Message_Tempo_Buffer[y] == 95 && Message_Tempo_Buffer[y + Message_Frame - 1] == 222)
+                    {
+                        label2.Text = "status : OK";
+                        Analyse_Message(Message_Tempo_Buffer,y);
+                        //richTextBox1.Text =y.ToString() +" "+ Message_Tempo_Buffer[y].ToString() + " ; " + Message_Tempo_Buffer[y+1].ToString() + " ; " + Message_Tempo_Buffer[y+15].ToString();
+                        break;
+                    }
+                }
+                
+            }
+            else
+            { label2.Text = "status : ERROR"; }
+            
+
+        }
+
+        private void Analyse_Message(int[] buffer, int y)
+        {
+            
+            label3.Text = "PWM : " + Convert.ToString(Convert.ToInt16(Convert.ToDouble(buffer[y+1])/255*100))+" %";
+            label4.Text = "Position : " + buffer[y+2].ToString();
+
+            byte[] B = new byte[4] { Convert.ToByte(buffer[y+6]), Convert.ToByte(buffer[y + 5]), Convert.ToByte(buffer[y + 4]), Convert.ToByte(buffer[y + 3]) };
+            double position = BitConverter.ToInt32(B,0);
+            position = Math.Round((position / 1000),3);
+            label5.Text = "Distance : "+position.ToString();
+
+            B = new byte[4] { Convert.ToByte(buffer[y + 10]), Convert.ToByte(buffer[y + 9]), Convert.ToByte(buffer[y + 8]), Convert.ToByte(buffer[y + 7]) };
+            double speed = BitConverter.ToInt32(B, 0);
+            speed = Math.Round((speed / 1000), 3);
+            label6.Text = "Speed : " + speed.ToString();
+
+            B = new byte[4] { Convert.ToByte(buffer[y + 14]), Convert.ToByte(buffer[y + 13]), Convert.ToByte(buffer[y + 12]), Convert.ToByte(buffer[y + 11]) };
+            double acc = BitConverter.ToInt32(B, 0);
+            acc = Math.Round((acc / 1000), 3);
+            label7.Text = "Acceleration : " + acc.ToString();
+
+
+
+
+
+
+
+
+
+
+        }
+    }
+}
