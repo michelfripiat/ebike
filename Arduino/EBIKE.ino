@@ -59,6 +59,7 @@ void setup() {
   pinMode(LA, OUTPUT);
   pinMode(LB, OUTPUT);
   pinMode(LC, OUTPUT);
+  Open_All_Gates();
   
   Timer1.initialize(250); 
   Timer1.attachInterrupt(Update_Switch);
@@ -143,37 +144,48 @@ int Position_State(){
 
 void Actuation(int Position) {
 
-  Open_All_Gates();
+  //Open_All_Gates();
 
   if (Position == 4)
   {
-   digitalWrite(LA, LOW); 
-   digitalWrite(HB,HIGH);
+   digitalWrite(HA,LOW);  //safety
+   digitalWrite(LA,LOW);
+   digitalWrite(LC,HIGH); 
   }
    if (Position == 5)
   {
-   digitalWrite(LC, LOW);
+   digitalWrite(LB,HIGH);  //safety
    digitalWrite(HB,HIGH);
+   digitalWrite(HA,LOW);
   }
    if (Position == 6)
   {
-   digitalWrite(LC, LOW);
-   digitalWrite(HA,HIGH);
+   digitalWrite(HC,LOW);  //safety
+   digitalWrite(LC,LOW);
+   digitalWrite(LB,HIGH);
   }
    if (Position == 1)
   {
-   digitalWrite(LB, LOW);
+   digitalWrite(LA,HIGH);  //safety
    digitalWrite(HA,HIGH);
+   digitalWrite(HC,LOW);
   }
    if (Position == 2)
   {
-   digitalWrite(LB, LOW);
-   digitalWrite(HC,HIGH);
+   digitalWrite(HB,LOW);  //safety
+   digitalWrite(LB,LOW);
+   digitalWrite(LA,HIGH);
   }
    if (Position == 3)
   {
-   digitalWrite(LA, LOW);
+   digitalWrite(LC,HIGH);  //safety
    digitalWrite(HC,HIGH);
+   digitalWrite(HB,LOW);
+  }
+  
+   if (Position == 0)
+  {
+   Open_All_Gates();
   }
   
 }
