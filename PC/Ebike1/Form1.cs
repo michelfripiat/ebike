@@ -57,7 +57,7 @@ namespace Ebike1
 
         private void button1_Click(object sender, EventArgs e)
         {
-            serialPort1.PortName = "COM3";
+            serialPort1.PortName = "COM10";
             serialPort1.BaudRate = 38400;
             serialPort1.Open();
             label1.Text = "State : Connected";

@@ -204,7 +204,7 @@ void Actuation() {
 
   if (Position == 4)
   {
-   if (Last_Position != 5)
+   if (Last_Position != 5 and Last_Position != 4)
    {Open_All_Gates();
     OCR1B=Inv_PWM_Motor; //HB ON
     TCNT1=0;
@@ -214,7 +214,7 @@ void Actuation() {
   }
   if (Position == 5)
   {
-   if (Last_Position != 6)
+   if (Last_Position != 6 and Last_Position != 5)
    {Open_All_Gates();
     digitalWrite(LC,LOW);  //LC ON
    }
@@ -226,7 +226,7 @@ void Actuation() {
   }
   if (Position == 6)
   {
-   if (Last_Position != 1)
+   if (Last_Position != 1 and Last_Position != 6)
    {Open_All_Gates();
     OCR1A=Inv_PWM_Motor; //HA ON
     TCNT1=0;
@@ -237,7 +237,7 @@ void Actuation() {
   }
   if (Position == 1)
   {
-   if (Last_Position != 2)
+   if (Last_Position != 2 and Last_Position != 1)
    {Open_All_Gates();
     digitalWrite(LB,LOW);  //LB ON
    }
@@ -249,7 +249,7 @@ void Actuation() {
   }
   if (Position == 2)
   {
-   if (Last_Position != 3)
+   if (Last_Position != 3 and Last_Position != 2)
    {Open_All_Gates();
     OCR2A=Inv_PWM_Motor; //HC ON
     TCNT2=0;
@@ -260,7 +260,7 @@ void Actuation() {
   }
   if (Position == 3)
   {
-   if (Last_Position != 4)
+   if (Last_Position != 4 and Last_Position != 3)
    {Open_All_Gates();
     digitalWrite(LA,LOW);// LA ON
    }
