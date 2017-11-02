@@ -13,11 +13,11 @@ int Pin_Hall_A = 2;
 int Pin_Hall_B = 3;
 int Pin_Hall_C = 4;
 
-int HA = 8;
-int LA = 9;
+int HA = 9;
 int HB = 10;
-int LB = 11;
-int HC = 12;
+int HC = 11;
+int LA = 8;
+int LB = 12;
 int LC = 13;
 
 int Time_Tic = 0;
@@ -37,15 +37,15 @@ float Raw_Speed8 = 0;
 float Raw_Speed9 = 0;
 float Raw_Speed10 = 0;
 
-float Distance_Per_Tic=0.033;  //  m/distance_Tic
+float Distance_Per_Tic=0.033/4.236;  //  m/distance_Tic
 float Time_Per_Tic=0.000250;   //  second/time_Tic
 
 float Distance = 0;
-int Motorization_Current_Pin = 14;  // CHANGE HERE
-int Battery_Voltage_Pin=15;  //CHANGE HERE
-int PWM_Pin = 10;  // CHANGE HERE
+int Motorization_Current_Pin = A0;  // CHANGE HERE
+int Battery_Voltage_Pin = A1;  //CHANGE HERE
+//int PWM_Pin = 10;  // CHANGE HERE
 
-int Cmd_PWM_Motor = 13;
+int Cmd_PWM_Motor = 15;
 int Position = 0; // Motor position state
 
 
@@ -95,8 +95,8 @@ void loop() {
   float Motorization_Current=analogRead(Motorization_Current_Pin)*2.2;
   float Battery_Voltage=analogRead(Battery_Voltage_Pin)*10;
 
-  int PWM = Control_Loop();
-  analogWrite(PWM_Pin,PWM);
+  //int PWM = Control_Loop();
+  //analogWrite(PWM_Pin,PWM);
 
   Communication(Distance,Speed,Acc);
   
@@ -145,35 +145,35 @@ void Actuation(int Position) {
 
   Open_All_Gates();
 
-  if (Position == 1)
+  if (Position == 4)
   {
-   digitalWrite(LA, HIGH);
-   digitalWrite(HB, HIGH);
-  }
-   if (Position == 2)
-  {
-   digitalWrite(LC, HIGH);
-   digitalWrite(HB, HIGH);
-  }
-   if (Position == 3)
-  {
-   digitalWrite(LC, HIGH);
-   digitalWrite(HA, HIGH);
-  }
-   if (Position == 4)
-  {
-   digitalWrite(LB, HIGH);
-   digitalWrite(HA, HIGH);
+   digitalWrite(LA, LOW); 
+   analogWrite(HB,Cmd_PWM_Motor);
   }
    if (Position == 5)
   {
-   digitalWrite(LB, HIGH);
-   digitalWrite(HC, HIGH);
+   digitalWrite(LC, LOW);
+   analogWrite(HB,Cmd_PWM_Motor);
   }
    if (Position == 6)
   {
-   digitalWrite(LA, HIGH);
-   digitalWrite(HC, HIGH);
+   digitalWrite(LC, LOW);
+   analogWrite(HA,Cmd_PWM_Motor);
+  }
+   if (Position == 1)
+  {
+   digitalWrite(LB, LOW);
+   analogWrite(HA,Cmd_PWM_Motor);
+  }
+   if (Position == 2)
+  {
+   digitalWrite(LB, LOW);
+   analogWrite(HC,Cmd_PWM_Motor);
+  }
+   if (Position == 3)
+  {
+   digitalWrite(LA, LOW);
+   analogWrite(HC,Cmd_PWM_Motor);
   }
   
 }
@@ -182,9 +182,9 @@ void  Open_All_Gates() {
   digitalWrite(HA, LOW);
   digitalWrite(HB, LOW);
   digitalWrite(HC, LOW);
-  digitalWrite(LA, LOW);
-  digitalWrite(LB, LOW);
-  digitalWrite(LC, LOW);
+  digitalWrite(LA, HIGH);
+  digitalWrite(LB, HIGH);
+  digitalWrite(LC, HIGH);
 }
 
 int Control_Loop() {
