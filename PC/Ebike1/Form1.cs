@@ -18,7 +18,7 @@ namespace Ebike1
         int Message_Tempo_Buffer_size = 0;
         int[] Core_Data_buffer = new int[16];
         int current_cmd;
-        int mode_cmd = 1; 
+        int mode_cmd = 3; 
         int pwm_cmd;
         int action_cmd = 0; //no action
 
@@ -46,6 +46,7 @@ namespace Ebike1
             File.Write("TimeStamp[ms];Data Received;Mode;PWM[%];Position[m];Speed[m/s];Acceleration[m/s2];Voltage[V];Current[A];Power[W];Torque[nm] \r\n");
             radioButton1.Checked = true;
             timer1.Start();
+            radioButton3.Select();
 
         }
 
@@ -56,8 +57,8 @@ namespace Ebike1
 
         private void button1_Click(object sender, EventArgs e)
         {
-            serialPort1.PortName = "COM16";
-            serialPort1.BaudRate = 115200;
+            serialPort1.PortName = "COM3";
+            serialPort1.BaudRate = 38400;
             serialPort1.Open();
             label1.Text = "State : Connected";
         }
@@ -103,18 +104,23 @@ namespace Ebike1
 
         private void Control_Action()
         {
-            if (mode_cmd == 2)
+            if (mode_cmd == 2) //Current control
             {
                 double current_tg = Convert.ToDouble(trackBar1.Value) / 100;
                 label8.Text = "Current_cmd : " + current_tg.ToString() + " A";
                 current_cmd = Convert.ToInt16(100 * current_tg);
             }
 
-            if (mode_cmd == 1)
+            if (mode_cmd == 1)  //PWM
             {
                 double pwm_tg = Math.Round(Convert.ToDouble(trackBar1.Value) / 2.55);
                 label8.Text = "PWM_cmd : " + pwm_tg.ToString() + " %";
                 pwm_cmd = Convert.ToInt16(2.55 * pwm_tg);
+            }
+
+            if (mode_cmd == 3)  //bluetooth
+            {
+                pwm_cmd = 0;
             }
 
         }
@@ -250,18 +256,33 @@ namespace Ebike1
             radioManagement();
         }
 
+        private void radioButton3_CheckedChanged(object sender, EventArgs e)
+        {
+
+            radioManagement();
+        }
+
         private void radioManagement()
         {
             if (radioButton1.Checked == true)
             {
                 mode_cmd = 1;
                 label8.Text = "PWM_cmd";
+                trackBar1.Enabled = true;
             }
 
             if (radioButton2.Checked == true)
             {
                 mode_cmd = 2;
                 label8.Text = "Current_cmd";
+                trackBar1.Enabled = true;
+            }
+
+            if (radioButton3.Checked == true)
+            {
+                mode_cmd = 3;
+                label8.Text = "Bluetooth";
+                trackBar1.Enabled = false;
             }
 
         }
@@ -310,5 +331,7 @@ namespace Ebike1
             checkBox1.Checked = false;
             button6.Enabled = false;
         }
+
+        
     }
 }

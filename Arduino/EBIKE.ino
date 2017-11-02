@@ -6,21 +6,27 @@
   it is attached to digital pin 13, on MKR1000 on pin 6. LED_BUILTIN is set to
   the correct LED pin independent of which board is used.
 */
+#include <SoftwareSerial.h>
 #include "TimerOne.h"
 
 int Message_Length=6; //length in bytes of the received messages
 
 int LED = 13;
-int Pin_Hall_A = 2;
-int Pin_Hall_B = 3;
-int Pin_Hall_C = 4;
+int Pin_Hall_A = 4;
+int Pin_Hall_B = 5;
+int Pin_Hall_C = 6;
 
 int HA = 9;
 int HB = 10;
 int HC = 11;
 int LA = 8;
-int LB = 11;
+int LB = 12;
 int LC = 7;
+
+int bluetoothTx = 2;  // TX-O pin of bluetooth mate, (greenwire)
+int bluetoothRx = 3;  // RX-I pin of bluetooth mate, (bluewire)
+SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
+int PWM_From_BT = 0;
 
 long Time_Tic = 0;
 long Distance_Tic = 0;
@@ -47,14 +53,14 @@ int Motorization_Current_Pin = A0;
 int Battery_Voltage_Pin = A1; 
 
 int Motorization_Current_cmd = 0;
-int mode_cmd=1;
+int mode_cmd=3;
 int pwm_cmd=0;
 int action_cmd=0;
 int PWM_Motor;
 int Inv_PWM_Motor;
 
 int Position = 0; // Motor position state
-int Last_Position;
+int Last_Position = 0;
 float Reg_Integrator=0;
 long delay_1=0;
 
@@ -86,12 +92,22 @@ void setup() {
   
   TCCR2A = 243;   //setting timer2 for pwm
   OCR2A = 255;
-  TCCR2B = 9;
+  TCCR2B = 1;
   
   
   sei();                                                 
 
-  Serial.begin(115200);
+  Serial.begin(38400);
+
+  bluetooth.begin(115200);  // The Bluetooth Mate defaults to 115200bps
+  bluetooth.print("$");  // Print three times individually
+  bluetooth.print("$");
+  bluetooth.print("$");  // Enter command mode
+  delay(100);  // Short delay, wait for the Mate to send back CMD
+  bluetooth.println("U,9600,N");  // Temporarily Change the baudrate to 9600, no parity
+  // 115200 can be too fast at times for NewSoftSerial to relay the data reliably
+  bluetooth.begin(9600);  // Start bluetooth serial at 38400
+  
 }
 
 ISR(TIMER0_COMPA_vect)
@@ -293,6 +309,11 @@ if (PWM_>255)
 if (PWM_<0)
 {PWM_Motor=0; }
 }
+
+if (mode_cmd==3)
+{
+  PWM_Motor= int(PWM_From_BT*2.55);
+}
 }
 
 void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,float Motorization_Current) {
@@ -303,8 +324,6 @@ void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,fl
    for (int u1=0; u1 <Message_Length; u1++)
    { trash = Serial.read(); }
    
-   
-
  }
  
  if (Serial.available() > 2*Message_Length)
@@ -327,13 +346,28 @@ void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,fl
     }
  
  }
- 
- 
+
+ while (bluetooth.available()) // Read while data in BT buffer
+  {
+    int BT_cmd = bluetooth.read();
+    char dataFromBt = (char)BT_cmd;
+
+    if (dataFromBt == 'u') {
+      PWM_From_BT=100; }
+
+    if (dataFromBt == 'd') {
+      PWM_From_BT=0; }
+      
+    if (dataFromBt == '1' && PWM_From_BT<100) {
+      PWM_From_BT=PWM_From_BT+10;
+      }
+    if (dataFromBt == '0' && PWM_From_BT>0) {
+      PWM_From_BT=PWM_From_BT-10;}
+  }
  
  //Motorization_Current_cmd = Serial.read();
  
  
-
 Serial.write(95);   //Startbyte '_'
 
 Serial.write(PWM_Motor);
@@ -380,8 +414,6 @@ Serial.write(mode_cmd);
    
 
 Serial.write(222);   //Stopbyte 
-
-
 }
 
 void Analyse_Message(int Message_Tempo_Buffer[],int y)
