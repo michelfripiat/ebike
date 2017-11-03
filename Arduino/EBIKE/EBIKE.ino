@@ -12,16 +12,12 @@
 int Message_Length=6; //length in bytes of the received messages
 
 int LED = 13;
-int Pin_Hall_A = 4;
-int Pin_Hall_B = 5;
-int Pin_Hall_C = 6;
-
-int HA = 9;
-int HB = 10;
-int HC = 11;
-int LA = 8;
-int LB = 12;
-int LC = 7;
+int HallState1; //Variables for the three hall sensors (3,2,1)
+int HallState2;
+int HallState3;
+int HallVal = 1; //binary value of all 3 hall sensors
+int mSpeed = 0; //speed level of the motor
+int bSpeed = 0; //braking level
 
 int bluetoothTx = 2;  // TX-O pin of bluetooth mate, (greenwire)
 int bluetoothRx = 3;  // RX-I pin of bluetooth mate, (bluewire)
@@ -67,35 +63,45 @@ long delay_1=0;
 
 // the setup function runs once when you press reset or power the board
 void setup() {
+
+  pinMode(2,INPUT);    // Hall 1
+  pinMode(3,INPUT);    // Hall 2
+  pinMode(4,INPUT);    // Hall 3
+ 
+// Outputs for the L6234 Motor Driver
+  pinMode(5,OUTPUT);   // IN 1
+  pinMode(6,OUTPUT);   // IN 2
+  pinMode(7,OUTPUT);   // IN 3    
+  pinMode(9,OUTPUT);   // EN 1
+  pinMode(10,OUTPUT);  // EN 2
+  pinMode(11,OUTPUT);  //  EN 3
+  
+  
+  //Serial.begin(9600); //uncomment this line if you will use the serial connection
+  // also uncomment Serial.flush command at end of program.
+
+/* Set PWM frequency on pins 9,10, and 11
+// this bit of code comes from
+http://usethearduino.blogspot.com/2008/11/changing-pwm-frequency-on-arduino.html
+*/ 
+  // Set PWM for pins 9,10 to 32 kHz
+  //First clear all three prescaler bits:
+  int prescalerVal = 0x07; //create a variable called prescalerVal and set it equal to the binary number "00000111"                                                       number "00000111"                                                      number "00000111"
+  TCCR1B &= ~prescalerVal; //AND the value in TCCR0B with binary number "11111000"
+  //Now set the appropriate prescaler bits:
+  int prescalerVal2 = 1; //set prescalerVal equal to binary number "00000001"
+  TCCR1B |= prescalerVal2; //OR the value in TCCR0B with binary number "00000001"
+  // Set PWM for pins 3,11 to 32 kHz (Only pin 11 is used in this program)
+  //First clear all three prescaler bits:
+  TCCR2B &= ~prescalerVal; //AND the value in TCCR0B with binary number "11111000"
+  //Now set the appropriate prescaler bits:
+  TCCR2B |= prescalerVal2; //OR the value in TCCR0B with binary number "00000001"//First clear all three prescaler bits:
+
+
+  // ------------------------------
+  
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED, OUTPUT);
-  pinMode(HA, OUTPUT);
-  pinMode(HB, OUTPUT);
-  pinMode(HC, OUTPUT);
-  pinMode(LA, OUTPUT);
-  pinMode(LB, OUTPUT);
-  pinMode(LC, OUTPUT);
-  Open_All_Gates();
-  
-  //Timer1.initialize(250); 
-  //Timer1.attachInterrupt(Update_Switch);
-  
-  TCCR0A = 0;     //setting timer0 for interrupts every 128us to update switch of MOSFET
-  TIMSK0 = 2;
-  OCR0A = 255;
-  TCCR0B = 2;  
-  
-  TCCR1A = 241;   //setting timer1 for pwm's
-  OCR1A = 255;
-  OCR1B = 255;
-  TCCR1B = 9;
-  
-  TCCR2A = 243;   //setting timer2 for pwm
-  OCR2A = 255;
-  TCCR2B = 1;
-  
-  
-  sei();                                                 
 
   Serial.begin(38400);
 
@@ -108,11 +114,6 @@ void setup() {
   // 115200 can be too fast at times for NewSoftSerial to relay the data reliably
   bluetooth.begin(9600);  // Start bluetooth serial at 38400
   
-}
-
-ISR(TIMER0_COMPA_vect)
-{
-  Update_Switch();
 }
 
 // the loop function runs over and over again forever
@@ -142,178 +143,117 @@ void loop() {
 
   float Motorization_Current=float(analogRead(Motorization_Current_Pin))*0.7*5/1024;
   float Battery_Voltage=float(analogRead(Battery_Voltage_Pin))*10*5/1024;
+  
+//--------------------
+  HallState1 = digitalRead(2);  // read input value from Hall 1
+  HallState2  = digitalRead(3);  // read input value from Hall 2
+  HallState3  = digitalRead(4);  // read input value from Hall 3
+  HallVal = (HallState1) + (2*HallState2) + (4*HallState3); //Computes the binary value of the 3 Hall sensors
+//--------------------
 
   Control_Loop(Motorization_Current); //generate PWM_Motor 
   Inv_PWM_Motor=255-PWM_Motor;
+  
+  mSpeed = PWM_Motor; //map(PWM_Motor, 512, 1023, 0, 255); //motoring is mapped to the top half of potentiometer
+  bSpeed = map(PWM_Motor, 0, 511, 255, 0);    // regenerative braking on bottom half of pot
+  
   Actuation();
+
+
+  
   
   Communication(Distance,Speed,Acc,Battery_Voltage,Motorization_Current);
   
   action_management();
   
-  while (delay_1<390)               // wait for a 50 milli-second
-  {digitalWrite(5,LOW);}
-  
-  delay_1=0;
-  //delay(50);                      
-}
 
-void Update_Switch() {
   
-  delay_1=delay_1+1;
-  
-  Position = Position_State();
-  if (Position!=Last_Position)
-  {Actuation();}
-  Last_Position=Position;
-}
-
-int Position_State(){
-
-  int New_Hall_A=digitalRead(Pin_Hall_A);
-
-  if (Last_Hall_A != New_Hall_A)          //update of distance and time Tic
-  {Distance_Tic = Distance_Tic+1;
-   Last_Hall_A = New_Hall_A;
-  }
-  Time_Tic=Time_Tic+1;
-  
-  
-  int D = 4*New_Hall_A+2*digitalRead(Pin_Hall_B)+digitalRead(Pin_Hall_C);
-  
-  if (D==1)
-   {return 2;}
-  if (D==2)
-   {return 4;}
-  if (D==3)
-   {return 3;}
-  if (D==4)
-   {return 6;}
-  if (D==5)
-   {return 1;}
-  if (D==6)
-   {return 5;}
-  if (D==0 || D==7)
-   {return 0;}
-  
+  //delay_1=0;                     
 }
 
 void Actuation() {
+   switch (HallVal)
+       {
+        case 3:
+          //PORTD = B011xxx00;  // Desired Output for pins 0-7 xxx refers to the Hall inputs, which should not be changed
+          PORTD  &= B00011111;
+          PORTD  |= B01100000;  //
 
-  //Open_All_Gates();
+          analogWrite(9,mSpeed); // PWM on Phase A (High side transistor)
+          analogWrite(10,0);  // Phase B off (duty = 0)
+          analogWrite(11,255); // Phase C on - duty = 100% (Low side transistor)
+          break;
+        case 1:
+          //PORTD = B001xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B00011111;  //
+          PORTD  |= B00100000;  //
 
-  if (Position == 4)
-  {
-   if (Last_Position != 5 and Last_Position != 4)
-   {Open_All_Gates();
-    OCR1B=Inv_PWM_Motor; //HB ON
-    TCNT1=0;
-   }
-   digitalWrite(LA,LOW);  //LA ON
-   digitalWrite(LC,HIGH); //LC OFF
-  }
-  if (Position == 5)
-  {
-   if (Last_Position != 6 and Last_Position != 5)
-   {Open_All_Gates();
-    digitalWrite(LC,LOW);  //LC ON
-   }
-   
-   OCR1B=Inv_PWM_Motor;  //HB ON
-   TCNT1=0;
-   OCR1A=255;  //HA OFF
-   TCNT1=0;
-  }
-  if (Position == 6)
-  {
-   if (Last_Position != 1 and Last_Position != 6)
-   {Open_All_Gates();
-    OCR1A=Inv_PWM_Motor; //HA ON
-    TCNT1=0;
-   }
-   
-   digitalWrite(LC,LOW);  //LC ON
-   digitalWrite(LB,HIGH); // LB OFF
-  }
-  if (Position == 1)
-  {
-   if (Last_Position != 2 and Last_Position != 1)
-   {Open_All_Gates();
-    digitalWrite(LB,LOW);  //LB ON
-   }
-   
-    OCR1A=Inv_PWM_Motor; //HA ON
-    TCNT1=0; 
-    OCR2A=255; //HC OFF
-    TCNT2=0;
-  }
-  if (Position == 2)
-  {
-   if (Last_Position != 3 and Last_Position != 2)
-   {Open_All_Gates();
-    OCR2A=Inv_PWM_Motor; //HC ON
-    TCNT2=0;
-   }
-   
-   digitalWrite(LB,LOW); // LB ON
-   digitalWrite(LA,HIGH);// LA OFF
-  }
-  if (Position == 3)
-  {
-   if (Last_Position != 4 and Last_Position != 3)
-   {Open_All_Gates();
-    digitalWrite(LA,LOW);// LA ON
-   }
-   
-   OCR2A=Inv_PWM_Motor; //HC ON
-   TCNT2=0;
-   OCR1B=255; //HB OFF
-   TCNT1=0;
-  }
-  
-   if (Position == 0)
-  {
-   Open_All_Gates();
-  }
-  
+          analogWrite(9,mSpeed); // PWM on Phase A (High side transistor)
+          analogWrite(10,255); //Phase B on (Low side transistor)
+          analogWrite(11,0); //Phase B off (duty = 0)
+          break;
+        case 5:
+          //PORTD = B101xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B00011111;  //
+          PORTD  |= B10100000;
+
+          analogWrite(9,0);
+          analogWrite(10,255);
+          analogWrite(11,mSpeed);
+          break;
+        case 4: 
+          //PORTD = B100xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B00011111;
+          PORTD  |= B10000000;  //
+
+          analogWrite(9,255);
+          analogWrite(10,0);
+          analogWrite(11,mSpeed);
+          break;
+        case 6:
+        //PORTD = B110xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B00011111;
+          PORTD = B11000000;  //
+
+          analogWrite(9,255);
+          analogWrite(10,mSpeed);
+          analogWrite(11,0);
+          break;
+        case 2:
+          //PORTD = B010xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B00011111;
+          PORTD  |= B01000000;  //
+
+          analogWrite(9,0);
+          analogWrite(10,mSpeed);
+          analogWrite(11,255);
+          break;
+       } 
 }
 
-void  Open_All_Gates() {
-  OCR1A=255; //HA OFF
-  OCR1B=255; //HB OFF
-  TCNT1=0;
-  OCR2A=255; //HC OFF
-  TCNT2=0;
-  digitalWrite(LA, HIGH); //LA OFF
-  digitalWrite(LB, HIGH); //LB OFF
-  digitalWrite(LC, HIGH); //LC OFF
-}
+void Control_Loop(float Motorization_Current) {          
+  float Kp=10;
+  float Ki=0;
+  float tg = float(Motorization_Current_cmd)/100;
+  float PWM_ = Kp*(tg-Motorization_Current)+127;
+   switch (mode_cmd)
+       {
+        case 1:
+          PWM_Motor=pwm_cmd;
+          break;
+        case 2:
 
-void Control_Loop(float Motorization_Current) {
-
-if (mode_cmd==1)
-{
-  PWM_Motor=pwm_cmd;
-}
-
-if (mode_cmd==2)
-{
-float Kp=10;
-float Ki=0;
-float tg = float(Motorization_Current_cmd)/100;
-Reg_Integrator=Reg_Integrator+Ki*(tg-Motorization_Current);
-float PWM_ = Kp*(tg-Motorization_Current)+127;
-PWM_Motor = int(PWM_);
-if (PWM_>255)
-{PWM_Motor=255; }
-if (PWM_<0)
-{PWM_Motor=0; }
-}
-
-if (mode_cmd==3)
-{
-  PWM_Motor= PWM_From_BT;
-}
+          Reg_Integrator=Reg_Integrator+Ki*(tg-Motorization_Current);
+          PWM_Motor = int(PWM_);
+          if (PWM_>255)
+          {PWM_Motor=255; }
+          if (PWM_<0)
+          {PWM_Motor=0; }
+          break;
+        case 3:
+          PWM_Motor= PWM_From_BT;
+          break;
+        }
 }
 
 void Communication(float Distance,float Speed,float Acc,float Battery_Voltage,float Motorization_Current) {
