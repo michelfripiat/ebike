@@ -19,6 +19,13 @@ int HallVal = 1; //binary value of all 3 hall sensors
 int mSpeed = 0; //speed level of the motor
 int bSpeed = 0; //braking level
 
+int Ha = 9;
+int Hb = 10;
+int Hc = 11;
+int La = 5;
+int Lb = 6;
+int Lc = 7;
+
 int bluetoothTx = 2;  // TX-O pin of bluetooth mate, (greenwire)
 int bluetoothRx = 3;  // RX-I pin of bluetooth mate, (bluewire)
 SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
@@ -113,9 +120,31 @@ http://usethearduino.blogspot.com/2008/11/changing-pwm-frequency-on-arduino.html
   bluetooth.println("U,9600,N");  // Temporarily Change the baudrate to 9600, no parity
   // 115200 can be too fast at times for NewSoftSerial to relay the data reliably
   bluetooth.begin(9600);  // Start bluetooth serial at 38400
+
+
+  TCCR0A = 0;     //setting timer0 for interrupts every 128us to update switch of MOSFET
+  TIMSK0 = 2;
+  OCR0A = 255;
+  TCCR0B = 2;  
   
+  TCCR1A = 241;   //setting timer1 for pwm's
+  OCR1A = 255;
+  OCR1B = 255;
+  TCCR1B = 9;
+  
+  TCCR2A = 243;   //setting timer2 for pwm
+  OCR2A = 255;
+  TCCR2B = 1;
+  sei();          
+
 }
 
+// In parallel of the loop(), execute this
+ISR(TIMER0_COMPA_vect)
+  {
+    Update_Switch();
+  }
+  
 // the loop function runs over and over again forever
 void loop() {
   
@@ -144,89 +173,119 @@ void loop() {
   float Motorization_Current=float(analogRead(Motorization_Current_Pin))*0.7*5/1024;
   float Battery_Voltage=float(analogRead(Battery_Voltage_Pin))*10*5/1024;
   
-//--------------------
-  HallState1 = digitalRead(2);  // read input value from Hall 1
-  HallState2  = digitalRead(3);  // read input value from Hall 2
-  HallState3  = digitalRead(4);  // read input value from Hall 3
-  HallVal = (HallState1) + (2*HallState2) + (4*HallState3); //Computes the binary value of the 3 Hall sensors
-//--------------------
+
 
   Control_Loop(Motorization_Current); //generate PWM_Motor 
-  Inv_PWM_Motor=255-PWM_Motor;
   
-  mSpeed = PWM_Motor; //map(PWM_Motor, 512, 1023, 0, 255); //motoring is mapped to the top half of potentiometer
-  bSpeed = map(PWM_Motor, 0, 511, 255, 0);    // regenerative braking on bottom half of pot
-  
+  mSpeed = map(PWM_Motor, 0, 255, 255, 0);
+  if (PWM_Motor<=1)
+   {mSpeed = 0;}
+  if (PWM_Motor>=254)
+   {mSpeed = 255;} 
+
   Actuation();
-
-
-  
   
   Communication(Distance,Speed,Acc,Battery_Voltage,Motorization_Current);
   
   action_management();
-  
+                
+}
 
+
+void Update_Switch() {
+  Position = Position_State();
+  if (Position!=Last_Position)
+  {Actuation();}
+  Last_Position=Position;
+}
+
+int Position_State(){
+
+//--------------------
+  HallState1 = digitalRead(2);  // read input value from Hall 1
+  HallState2  = digitalRead(3);  // read input value from Hall 2
+  HallState3  = digitalRead(4);  // read input value from Hall 3
+
+  if (Last_Hall_A != HallState1)          //update of distance and time Tic
+  {Distance_Tic = Distance_Tic+1;
+   Last_Hall_A = HallState1;
+  }
+  Time_Tic=Time_Tic+1;
   
-  //delay_1=0;                     
+  int D = (HallState1) + (2*HallState2) + (4*HallState3); //Computes the binary value of the 3 Hall sensors
+
+    if (D==1)
+   {return 2;}
+  if (D==2)
+   {return 4;}
+  if (D==3)
+   {return 3;}
+  if (D==4)
+   {return 6;}
+  if (D==5)
+   {return 1;}
+  if (D==6)
+   {return 5;}
+  if (D==0 || D==7)
+   {return 0;}
 }
 
 void Actuation() {
-   switch (HallVal)
+   switch (Position)
        {
-        case 3:
+        case 6:
           //PORTD = B011xxx00;  // Desired Output for pins 0-7 xxx refers to the Hall inputs, which should not be changed
-          PORTD  &= B00011111;
-          PORTD  |= B01100000;  //
+          PORTD  &= B10111111; //Lb active
+          PORTD  |= B10100000;  //
 
-          analogWrite(9,mSpeed); // PWM on Phase A (High side transistor)
-          analogWrite(10,0);  // Phase B off (duty = 0)
-          analogWrite(11,255); // Phase C on - duty = 100% (Low side transistor)
-          break;
-        case 1:
-          //PORTD = B001xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B00011111;  //
-          PORTD  |= B00100000;  //
-
-          analogWrite(9,mSpeed); // PWM on Phase A (High side transistor)
-          analogWrite(10,255); //Phase B on (Low side transistor)
-          analogWrite(11,0); //Phase B off (duty = 0)
+          analogWrite(Ha,mSpeed); // Phase A
+          analogWrite(Hb,0);  // Phase B 
+          analogWrite(Hc,0); // Phase C
           break;
         case 5:
+          //PORTD = B001xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B10111111;  //Lb active
+          PORTD  |= B10100000;  //
+
+          analogWrite(Ha,0); // Phase A
+          analogWrite(Hb,0);  // Phase B 
+          analogWrite(Hc,mSpeed); // Phase C
+          break;
+        case 4:
           //PORTD = B101xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B00011111;  //
-          PORTD  |= B10100000;
+          PORTD  &= B11011111;  //La active
+          PORTD  |= B11000000;  //
 
-          analogWrite(9,0);
-          analogWrite(10,255);
-          analogWrite(11,mSpeed);
+          analogWrite(Ha,0); // Phase A
+          analogWrite(Hb,0);  // Phase B 
+          analogWrite(Hc,mSpeed); // Phase C
           break;
-        case 4: 
+        case 3: 
           //PORTD = B100xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B00011111;
-          PORTD  |= B10000000;  //
+          PORTD  &= B11011111;  //La active
+          PORTD  |= B11000000;  //
 
-          analogWrite(9,255);
-          analogWrite(10,0);
-          analogWrite(11,mSpeed);
-          break;
-        case 6:
-        //PORTD = B110xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B00011111;
-          PORTD = B11000000;  //
-
-          analogWrite(9,255);
-          analogWrite(10,mSpeed);
-          analogWrite(11,0);
+          analogWrite(Ha,0); // Phase A
+          analogWrite(Hb,mSpeed);  // Phase B 
+          analogWrite(Hc,0); // Phase C
           break;
         case 2:
-          //PORTD = B010xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B00011111;
-          PORTD  |= B01000000;  //
+        //PORTD = B110xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B01111111;  //La active
+          PORTD  |= B01100000;  //
 
-          analogWrite(9,0);
-          analogWrite(10,mSpeed);
-          analogWrite(11,255);
+          analogWrite(Ha,0); // Phase A
+          analogWrite(Hb,mSpeed);  // Phase B 
+          analogWrite(Hc,0); // Phase C
+          break;
+        case 1:
+          //PORTD = B010xxx00;  // Desired Output for pins 0-7
+          PORTD  &= B01111111;  //La active
+          PORTD  |= B01100000;  //
+
+          analogWrite(Ha,mSpeed); // Phase A
+          analogWrite(Hb,0);  // Phase B 
+          analogWrite(Hc,0); // Phase C
           break;
        } 
 }
