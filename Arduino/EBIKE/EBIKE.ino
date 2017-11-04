@@ -202,9 +202,9 @@ void Update_Switch() {
 int Position_State(){
 
 //--------------------
-  HallState1 = digitalRead(2);  // read input value from Hall 1
-  HallState2  = digitalRead(3);  // read input value from Hall 2
-  HallState3  = digitalRead(4);  // read input value from Hall 3
+  HallState1 = digitalRead(2);  // read input value from Hall 1 (Bit A Green)
+  HallState2  = digitalRead(3);  // read input value from Hall 2 (Bit B Yellow)
+  HallState3  = digitalRead(4);  // read input value from Hall 3 (Bit C Blue)
 
   if (Last_Hall_A != HallState1)          //update of distance and time Tic
   {Distance_Tic = Distance_Tic+1;
@@ -215,17 +215,17 @@ int Position_State(){
   int D = (HallState1) + (2*HallState2) + (4*HallState3); //Computes the binary value of the 3 Hall sensors
 
     if (D==1)
+   {return 1;}
+  if (D==3)
    {return 2;}
   if (D==2)
-   {return 4;}
-  if (D==3)
    {return 3;}
-  if (D==4)
-   {return 6;}
-  if (D==5)
-   {return 1;}
   if (D==6)
+   {return 4;}
+  if (D==4)
    {return 5;}
+  if (D==5)
+   {return 6;}
   if (D==0 || D==7)
    {return 0;}
 }
@@ -233,60 +233,57 @@ int Position_State(){
 void Actuation() {
    switch (Position)
        {
-        case 6:
-          //PORTD = B011xxx00;  // Desired Output for pins 0-7 xxx refers to the Hall inputs, which should not be changed
-          PORTD  &= B10111111; //Lb active
-          PORTD  |= B10100000;  //
-
-          analogWrite(Ha,mSpeed); // Phase A
-          analogWrite(Hb,0);  // Phase B 
-          analogWrite(Hc,0); // Phase C
+        // PORTD = B<Lc><Lb><La><H3><H2><H1>00: Desired Output for pins 0-7 the Hall inputs should not be changed
+        // /!\ mosfet active when zero  
+        case 1: // B --> C
+          analogWrite(Hb,mSpeed);
+          analogWrite(Ha,0); 
+          analogWrite(Hc,0);
+          PORTD  &= B01111111; 
+          PORTD  |= B01100000;  
           break;
-        case 5:
-          //PORTD = B001xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B10111111;  //Lb active
-          PORTD  |= B10100000;  //
-
-          analogWrite(Ha,0); // Phase A
-          analogWrite(Hb,0);  // Phase B 
-          analogWrite(Hc,mSpeed); // Phase C
+        case 2: // B --> A
+          analogWrite(Hb,mSpeed);  
+          analogWrite(Ha,0);
+          analogWrite(Hc,0);
+          PORTD  &= B11011111;  
+          PORTD  |= B11000000;  
           break;
-        case 4:
-          //PORTD = B101xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B11011111;  //La active
-          PORTD  |= B11000000;  //
-
-          analogWrite(Ha,0); // Phase A
-          analogWrite(Hb,0);  // Phase B 
-          analogWrite(Hc,mSpeed); // Phase C
+        case 3: // C --> A
+          analogWrite(Hc,mSpeed); 
+          analogWrite(Ha,0); 
+          analogWrite(Hb,0);  
+          PORTD  &= B11011111;  
+          PORTD  |= B11000000;  
           break;
-        case 3: 
-          //PORTD = B100xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B11011111;  //La active
-          PORTD  |= B11000000;  //
-
-          analogWrite(Ha,0); // Phase A
-          analogWrite(Hb,mSpeed);  // Phase B 
-          analogWrite(Hc,0); // Phase C
+        case 4: // C --> B
+          analogWrite(Hc,mSpeed);  
+          analogWrite(Ha,0); 
+          analogWrite(Hb,0); 
+          PORTD  &= B10111111;
+          PORTD  |= B10100000;  
           break;
-        case 2:
-        //PORTD = B110xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B01111111;  //La active
-          PORTD  |= B01100000;  //
-
-          analogWrite(Ha,0); // Phase A
-          analogWrite(Hb,mSpeed);  // Phase B 
-          analogWrite(Hc,0); // Phase C
+        case 5: // A --> B
+          analogWrite(Ha,mSpeed); 
+          analogWrite(Hb,0);  
+          analogWrite(Hc,0); 
+          PORTD  &= B10111111; 
+          PORTD  |= B10100000;  
           break;
-        case 1:
-          //PORTD = B010xxx00;  // Desired Output for pins 0-7
-          PORTD  &= B01111111;  //La active
-          PORTD  |= B01100000;  //
-
-          analogWrite(Ha,mSpeed); // Phase A
-          analogWrite(Hb,0);  // Phase B 
-          analogWrite(Hc,0); // Phase C
+        case 6: // A --> C
+          analogWrite(Ha,mSpeed);
+          analogWrite(Hb,0); 
+          analogWrite(Hc,0); 
+          PORTD  &= B01111111;
+          PORTD  |= B01100000; 
           break;
+        default:
+          PORTD  &= B11111111;
+          PORTD  |= B11100000;  
+          analogWrite(Ha,0); 
+          analogWrite(Hb,0);  
+          analogWrite(Hc,0);
+          break;    
        } 
 }
 
