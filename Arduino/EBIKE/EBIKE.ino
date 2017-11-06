@@ -194,8 +194,9 @@ void loop() {
 
 void Update_Switch() {
   Position = Position_State();
-  if (Position!=Last_Position)
-  {Actuation();}
+  Actuation();
+//  if (Position!=Last_Position)
+//  {Actuation();}
   Last_Position=Position;
 }
 
@@ -234,55 +235,62 @@ void Actuation() {
    switch (Position)
        {
         // PORTD = B<Lc><Lb><La><H3><H2><H1>00: Desired Output for pins 0-7 the Hall inputs should not be changed
-        // /!\ mosfet active when zero  
+        // /!\ Low mosfet active when PORTD = 0  
         case 1: // B --> C
           analogWrite(Hb,mSpeed);
           analogWrite(Ha,0); 
           analogWrite(Hc,0);
-          PORTD  &= B01111111; 
-          PORTD  |= B01100000;  
+          digitalWrite(Lc, 0);
+          digitalWrite(La, 1);
+          digitalWrite(Lb, 1);
           break;
         case 2: // B --> A
           analogWrite(Hb,mSpeed);  
           analogWrite(Ha,0);
           analogWrite(Hc,0);
-          PORTD  &= B11011111;  
-          PORTD  |= B11000000;  
+          digitalWrite(La, 0);
+          digitalWrite(Lb, 1);
+          digitalWrite(Lc, 1); 
           break;
         case 3: // C --> A
           analogWrite(Hc,mSpeed); 
           analogWrite(Ha,0); 
           analogWrite(Hb,0);  
-          PORTD  &= B11011111;  
-          PORTD  |= B11000000;  
+          digitalWrite(La, 0);
+          digitalWrite(Lb, 1);
+          digitalWrite(Lc, 1);  
           break;
         case 4: // C --> B
           analogWrite(Hc,mSpeed);  
           analogWrite(Ha,0); 
           analogWrite(Hb,0); 
-          PORTD  &= B10111111;
-          PORTD  |= B10100000;  
+          digitalWrite(Lb, 0);
+          digitalWrite(La, 1);
+          digitalWrite(Lc, 1); 
           break;
         case 5: // A --> B
           analogWrite(Ha,mSpeed); 
           analogWrite(Hb,0);  
           analogWrite(Hc,0); 
-          PORTD  &= B10111111; 
-          PORTD  |= B10100000;  
+          digitalWrite(Lb, 0);
+          digitalWrite(La, 1);
+          digitalWrite(Lc, 1); 
           break;
         case 6: // A --> C
           analogWrite(Ha,mSpeed);
           analogWrite(Hb,0); 
           analogWrite(Hc,0); 
-          PORTD  &= B01111111;
-          PORTD  |= B01100000; 
+          digitalWrite(Lc, 0);
+          digitalWrite(La, 1);
+          digitalWrite(Lb, 1);  
           break;
-        default:
-          PORTD  &= B11111111;
-          PORTD  |= B11100000;  
+        default: // Stop everything
           analogWrite(Ha,0); 
           analogWrite(Hb,0);  
           analogWrite(Hc,0);
+          digitalWrite(Lc, 1);
+          digitalWrite(La, 1);
+          digitalWrite(Lb, 1);   
           break;    
        } 
 }
